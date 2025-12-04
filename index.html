@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Моделирование радиоактивного распада</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        window.MathJax = {
+            tex: { 
+                inlineMath: [['$', '$'], ['\\(', '\\)']] 
+            }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>📊 Интерактивное моделирование радиоактивного распада</h1>
+            <p class="subtitle">Образовательный проект для изучения физических процессов</p>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Раздел 1: Простой распад -->
+        <section class="card">
+            <h2>1. Радиоактивный распад</h2>
+            
+            <div class="formula-block">
+                <p class="formula">Основное уравнение: $N(t) = N_0 e^{-\lambda t}$</p>
+                <p class="formula">Период полураспада: $T_{1/2} = \frac{\ln 2}{\lambda}$</p>
+                <p class="formula">Активность: $A(t) = \lambda N(t) = \lambda N_0 e^{-\lambda t}$</p>
+            </div>
+            
+            <div class="controls">
+                <div class="control-group">
+                    <label for="n0">Начальное количество ядер ($N_0$):</label>
+                    <input type="range" id="n0" min="100" max="10000" value="1000" step="100">
+                    <span id="n0-value">1000</span>
+                </div>
+                
+                <div class="control-group">
+                    <label for="lambda">Постоянная распада ($\lambda$, 1/с):</label>
+                    <input type="range" id="lambda" min="0.01" max="1" value="0.1" step="0.01">
+                    <span id="lambda-value">0.1</span>
+                </div>
+                
+                <div class="control-group">
+                    <label for="time">Время моделирования (с):</label>
+                    <input type="range" id="time" min="10" max="100" value="50" step="5">
+                    <span id="time-value">50</span>
+                </div>
+            </div>
+            
+            <canvas id="decayChart"></canvas>
+            
+            <div class="info-box">
+                <h3>Расчетные параметры:</h3>
+                <p>Период полураспада: $T_{1/2} = $ <span id="halflife">6.93</span> с</p>
+                <p>Текущая активность: $A(t) = $ <span id="activity">0</span> распадов/с</p>
+                <p>Распалось ядер: $N_{\text{распадов}} = $ <span id="decayed">0</span></p>
+            </div>
+        </section>
+
+        <!-- Раздел 2: Цепная реакция (непрерывная модель) -->
+        <section class="card">
+            <h2>2. Цепная реакция (непрерывная модель)</h2>
+            
+            <div class="formula-block">
+                <p class="formula">Дифференциальное уравнение: $\frac{dN}{dt} = \alpha N(t)$</p>
+                <p class="formula">Решение: $N(t) = N_0 e^{\alpha t}$</p>
+                <p class="formula">Связь параметров: $\alpha = \frac{\ln k}{\tau}$</p>
+            </div>
+            
+            <div class="controls">
+                <div class="control-group">
+                    <label for="k-factor">Коэффициент размножения ($k$):</label>
+                    <input type="range" id="k-factor" min="0.5" max="2" value="1.2" step="0.1">
+                    <span id="k-value">1.2</span>
+                </div>
+                
+                <div class="control-group">
+                    <label for="tau">Время одного поколения ($\tau$, мкс):</label>
+                    <input type="range" id="tau" min="0.1" max="5" value="1" step="0.1">
+                    <span id="tau-value">1</span>
+                </div>
+                
+                <div class="control-group">
+                    <label for="initial-neutrons">Начальное количество нейтронов ($N_0$):</label>
+                    <input type="range" id="initial-neutrons" min="1" max="100" value="10" step="1">
+                    <span id="neutrons-value">10</span>
+                </div>
+                
+                <div class="control-group">
+                    <label for="chain-time">Время моделирования (мкс):</label>
+                    <input type="range" id="chain-time" min="1" max="20" value="10" step="1">
+                    <span id="chain-time-value">10</span>
+                </div>
+            </div>
+            
+            <canvas id="chainChart"></canvas>
+            
+            <div class="info-box">
+                <h3>Расчетные параметры:</h3>
+                <p>Параметр роста: $\alpha = $ <span id="alpha-value">0</span> мкс⁻¹</p>
+                <p>Режим: <span id="regime">Критический</span></p>
+                <ul>
+                    <li><strong>$k < 1$:</strong> Подкритический (затухание)</li>
+                    <li><strong>$k = 1$:</strong> Критический (стабильный)</li>
+                    <li><strong>$k > 1$:</strong> Надкритический (рост)</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Раздел 3: Дискретная модель -->
+        <section class="card">
+            <h2>3. Дискретная модель (по поколениям)</h2>
+            
+            <div class="formula-block">
+                <p class="formula">Рекуррентное соотношение: $N_{n+1} = k \cdot N_n$</p>
+                <p class="formula">Решение: $N_n = N_0 \cdot k^n$</p>
+            </div>
+            
+            <div class="controls">
+                <div class="control-group">
+                    <label for="k-discrete">Коэффициент размножения ($k$):</label>
+                    <input type="range" id="k-discrete" min="0.5" max="2" value="1.3" step="0.1">
+                    <span id="k-discrete-value">1.3</span>
+                </div>
+                
+                <div class="control-group">
+                    <label for="n0-discrete">Начальное количество ($N_0$):</label>
+                    <input type="range" id="n0-discrete" min="1" max="100" value="10" step="1">
+                    <span id="n0-discrete-value">10</span>
+                </div>
+                
+                <div class="control-group">
+                    <label for="generations">Количество поколений:</label>
+                    <input type="range" id="generations" min="5" max="30" value="15" step="1">
+                    <span id="generations-value">15</span>
+                </div>
+            </div>
+            
+            <canvas id="discreteChart"></canvas>
+            
+            <div class="info-box">
+                <h3>Результаты:</h3>
+                <p>Финальное количество: $N_{final} = $ <span id="final-count">0</span></p>
+                <p>Кратность увеличения: <span id="multiplication">0</span>×</p>
+            </div>
+        </section>
+
+        <!-- Раздел 4: Энергетический выход -->
+        <section class="card">
+            <h2>4. Энергетический выход при распаде</h2>
+            
+            <div class="formula-block">
+                <p class="formula">Число распавшихся ядер: $N_{\text{распадов}}(t) = N_0(1 - e^{-\lambda t})$</p>
+                <p class="formula">Полная энергия: $E_{\text{tot}}(t) = E_{\text{один}} \cdot N_{\text{распадов}}(t)$</p>
+            </div>
+            
+            <div class="controls">
+                <div class="control-group">
+                    <label for="energy-per-decay">Энергия одного распада ($E_{\text{один}}$, МэВ):</label>
+                    <input type="range" id="energy-per-decay" min="0.1" max="10" value="5" step="0.1">
+                    <span id="energy-value">5</span>
+                </div>
+            </div>
+            
+            <canvas id="energyChart"></canvas>
+            
+            <div class="info-box">
+                <h3>Энергетические параметры:</h3>
+                <p>Выделено энергии: <span id="total-energy">0</span> МэВ</p>
+                <p>Мощность (средняя): <span id="power">0</span> МэВ/с</p>
+            </div>
+        </section>
+
+        <!-- Раздел 5: Сравнение -->
+        <section class="card">
+            <h2>5. Сравнение процессов</h2>
+            <canvas id="comparisonChart"></canvas>
+            <p class="note">График показывает нормализованное сравнение распада (убывание) и цепной реакции (рост при $k > 1$)</p>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>🎓 Образовательный проект | Моделирование физических процессов</p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
