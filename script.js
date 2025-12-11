@@ -19,7 +19,9 @@ function setupEventListeners() {
     });
     
     document.getElementById('lambda').addEventListener('input', (e) => {
-        document.getElementById('lambda-value').textContent = e.target.value;
+        const exponent = parseFloat(e.target.value);
+        const lambda = Math.pow(10, exponent);
+        document.getElementById('lambda-value').textContent = lambda.toExponential(2);
         updateHalflife();
         updateDecayChart();
         updateEnergyChart();
@@ -159,12 +161,26 @@ function initializeCharts() {
     });
 }
 
-// Обновление периода полураспада
+// Обновление периода полураспада и автоматический подбор времени симуляции
 function updateHalflife() {
-    const lambda = parseFloat(document.getElementById('lambda').value);
-    const halflife = Math.log(2) / lambda;
-    document.getElementById('halflife').textContent = halflife.toFixed(2);
+    const exponent = parseFloat(document.getElementById('lambda').value);
+    const lambda = Math.pow(10, exponent);
+    
+    if (isNaN(lambda)) return;
+
+    // Период полураспада в секундах
+    const halflifeSec = Math.log(2) / lambda;
+
+    // Для отображения переводим в дни
+    const halflifeDays = halflifeSec / 86400;
+    document.getElementById('halflife').textContent = halflifeDays.toFixed(2);
+
+    // Подбираем разумное время моделирования: 5 периодов полураспада
+    const maxTime = Math.round(5 * halflifeSec);
+    document.getElementById('time').value = maxTime;
+    document.getElementById('time-value').textContent = maxTime;
 }
+    
 
 // Расчет радиоактивного распада
 function calculateDecay(N0, lambda, maxTime) {
@@ -232,15 +248,17 @@ function calculateEnergy(N0, lambda, energyPerDecay, maxTime) {
 // Обновление графика распада
 function updateDecayChart() {
     const N0 = parseFloat(document.getElementById('n0').value);
-    const lambda = parseFloat(document.getElementById('lambda').value);
+    const exponent = parseFloat(document.getElementById('lambda').value);
+    const lambda = Math.pow(10, exponent);
     const maxTime = parseFloat(document.getElementById('time').value);
     
     const data = calculateDecay(N0, lambda, maxTime);
     
     // Расчет активности A(t) = λ * N(t)
+    // Активность имеет ту же форму, что и N(t), только масштабированная
     const activityData = data.map(d => ({
         x: d.x,
-        y: (lambda * parseFloat(d.y)).toFixed(2)
+        y: (lambda * parseFloat(d.y))
     }));
     
     // Обновление информации
@@ -249,13 +267,13 @@ function updateDecayChart() {
     const currentActivity = lambda * finalN;
     
     document.getElementById('decayed').textContent = Math.round(decayed);
-    document.getElementById('activity').textContent = currentActivity.toFixed(2);
+    document.getElementById('activity').textContent = currentActivity.toExponential(2);
     
     decayChart.data.labels = data.map(d => d.x);
     decayChart.data.datasets = [
         {
             label: 'Количество ядер N(t)',
-            data: data.map(d => d.y),
+            data: data.map(d => parseFloat(d.y)),
             borderColor: 'rgb(102, 126, 234)',
             backgroundColor: 'rgba(102, 126, 234, 0.1)',
             tension: 0.4,
@@ -273,13 +291,38 @@ function updateDecayChart() {
         }
     ];
     
+    // Настройка второй оси Y для активности
+    // Масштаб должен быть пропорционален первой оси
+    const maxN = Math.max(...data.map(d => parseFloat(d.y)));
+    const maxA = lambda * maxN;
+    
+    decayChart.options.scales.y = {
+        type: 'linear',
+        display: true,
+        position: 'left',
+        title: {
+            display: true,
+            text: 'Количество ядер N(t)'
+        },
+        grid: {
+            color: 'rgba(0, 0, 0, 0.05)'
+        }
+    };
+    
     decayChart.options.scales.y1 = {
         type: 'linear',
         display: true,
         position: 'right',
+        title: {
+            display: true,
+            text: 'Активность A(t) (распадов/с)'
+        },
         grid: {
             drawOnChartArea: false
-        }
+        },
+        // Синхронизируем масштаб: если N от 0 до maxN, то A от 0 до maxA
+        min: 0,
+        max: maxA
     };
     
     decayChart.update();
@@ -321,7 +364,8 @@ function updateChainChart() {
 // Обновление графика сравнения
 function updateComparisonChart() {
     const N0_decay = parseFloat(document.getElementById('n0').value);
-    const lambda = parseFloat(document.getElementById('lambda').value);
+    const exponent = parseFloat(document.getElementById('lambda').value);
+    const lambda = Math.pow(10, exponent);
     const maxTime_decay = parseFloat(document.getElementById('time').value);
     
     const N0_chain = parseFloat(document.getElementById('initial-neutrons').value);
@@ -396,7 +440,8 @@ function updateDiscreteChart() {
 // Обновление графика энергии
 function updateEnergyChart() {
     const N0 = parseFloat(document.getElementById('n0').value);
-    const lambda = parseFloat(document.getElementById('lambda').value);
+    const exponent = parseFloat(document.getElementById('lambda').value);
+    const lambda = Math.pow(10, exponent);
     const maxTime = parseFloat(document.getElementById('time').value);
     const energyPerDecay = parseFloat(document.getElementById('energy-per-decay').value);
     
