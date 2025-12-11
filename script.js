@@ -166,17 +166,29 @@ function updateHalflife() {
     const exponent = parseFloat(document.getElementById('lambda').value);
     const lambda = Math.pow(10, exponent);
     
-    if (isNaN(lambda)) return;
+    if (!isFinite(lambda) || lambda <= 0) {
+        document.getElementById('halflife').textContent = '—';
+        return;
+    }
 
     // Период полураспада в секундах
     const halflifeSec = Math.log(2) / lambda;
 
-    // Для отображения переводим в дни
-    const halflifeDays = halflifeSec / 86400;
-    document.getElementById('halflife').textContent = halflifeDays.toFixed(2);
+    // Умное отображение периода полураспада
+    let halflifeText;
+    if (halflifeSec < 60) {
+        halflifeText = halflifeSec.toFixed(2) + ' с';
+    } else if (halflifeSec < 3600) {
+        halflifeText = (halflifeSec / 60).toFixed(2) + ' мин';
+    } else if (halflifeSec < 86400) {
+        halflifeText = (halflifeSec / 3600).toFixed(2) + ' ч';
+    } else {
+        halflifeText = (halflifeSec / 86400).toFixed(2) + ' дней';
+    }
+    document.getElementById('halflife').textContent = halflifeText;
 
     // Подбираем разумное время моделирования: 5 периодов полураспада
-    const maxTime = Math.round(5 * halflifeSec);
+    const maxTime = Math.max(10, Math.min(1000, Math.round(5 * halflifeSec)));
     document.getElementById('time').value = maxTime;
     document.getElementById('time-value').textContent = maxTime;
 }
@@ -373,39 +385,66 @@ function updateComparisonChart() {
     const tau = parseFloat(document.getElementById('tau').value);
     const maxTime_chain = parseFloat(document.getElementById('chain-time').value);
     
-    // Используем общую временную шкалу
-    const maxTime = Math.max(maxTime_decay, maxTime_chain);
+    if (!isFinite(N0_decay) || N0_decay <= 0 ||
+        !isFinite(lambda) || lambda <= 0 ||
+        !isFinite(maxTime_decay) || maxTime_decay <= 0 ||
+        !isFinite(N0_chain) || N0_chain <= 0 ||
+        !isFinite(k) || k <= 0 ||
+        !isFinite(tau) || tau <= 0 ||
+        !isFinite(maxTime_chain) || maxTime_chain <= 0) {
+        return;
+    }
     
-    const decayData = calculateDecay(N0_decay, lambda, maxTime);
-    const chainData = calculateChainReaction(N0_chain, k, tau, maxTime);
+    // Каждый процесс на своей временной шкале
+    const decayData = calculateDecay(N0_decay, lambda, maxTime_decay);
+    const chainData = calculateChainReaction(N0_chain, k, tau, maxTime_chain);
     
-    // Нормализация данных для сравнения
-    const normalizeData = (data) => {
-        const max = Math.max(...data.map(d => parseFloat(d.y)));
-        if (max === 0) return data.map(d => ({ x: d.x, y: 0 }));
-        return data.map(d => ({ x: d.x, y: (parseFloat(d.y) / max * 100).toFixed(2) }));
+    // Нормализация: приводим к 100 точкам и процентам от начального значения
+    const normalizeToPercent = (data, N0) => {
+        const points = 100;
+        const step = (data.length - 1) / points;
+        const result = [];
+        for (let i = 0; i <= points; i++) {
+            const idx = Math.min(Math.round(i * step), data.length - 1);
+            const percent = (parseFloat(data[idx].y) / N0 * 100).toFixed(2);
+            result.push(percent);
+        }
+        return result;
     };
     
-    const normalizedDecay = normalizeData(decayData);
-    const normalizedChain = normalizeData(chainData);
+    const normalizedDecay = normalizeToPercent(decayData, N0_decay);
+    const normalizedChain = normalizeToPercent(chainData, N0_chain);
     
-    comparisonChart.data.labels = normalizedDecay.map(d => d.x);
+    // Метки: относительное время (0-100%)
+    const labels = Array.from({length: 101}, (_, i) => i);
+    
+    comparisonChart.data.labels = labels;
     comparisonChart.data.datasets = [
         {
-            label: 'Распад (нормализованный, %)',
-            data: normalizedDecay.map(d => d.y),
+            label: `Распад (0-${maxTime_decay} с)`,
+            data: normalizedDecay,
             borderColor: 'rgb(102, 126, 234)',
             backgroundColor: 'rgba(102, 126, 234, 0.1)',
             tension: 0.4
         },
         {
-            label: 'Цепная реакция (нормализованная, %)',
-            data: normalizedChain.map(d => d.y),
+            label: `Цепная реакция (0-${maxTime_chain} мкс)`,
+            data: normalizedChain,
             borderColor: 'rgb(118, 75, 162)',
             backgroundColor: 'rgba(118, 75, 162, 0.1)',
             tension: 0.4
         }
     ];
+    
+    comparisonChart.options.scales.x.title = {
+        display: true,
+        text: 'Относительное время (%)'
+    };
+    
+    comparisonChart.options.scales.y.title = {
+        display: true,
+        text: 'Относительное количество (% от N₀)'
+    };
     
     comparisonChart.update();
 }
